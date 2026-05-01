@@ -2,16 +2,17 @@ import sys
 import os
 from unittest.mock import MagicMock
 
-# Mock fastapi and httpx before importing from api.index
+# Mock fastapi, httpx and dotenv before importing from api.index
 mock_fastapi = MagicMock()
 sys.modules["fastapi"] = mock_fastapi
 sys.modules["fastapi.responses"] = MagicMock()
 sys.modules["httpx"] = MagicMock()
+sys.modules["dotenv"] = MagicMock()
 
 # Add the project root to sys.path to import from api
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from api.index import generate_stats_svg, generate_languages_svg, get_colors, format_size
+from api.index import generate_stats_svg, generate_languages_svg, get_colors
 
 def test_stats_svg():
     stats = {
@@ -22,14 +23,12 @@ def test_stats_svg():
         "prs": 50,
         "issues": 20,
         "contributed_to": 10,
-        "total_repos": 15,
-        "disk_usage": "100 MB"
+        "total_repos": 15
     }
     c = get_colors("dark", None, None, None)
     svg = generate_stats_svg(stats, c, False, [])
     assert "Test User's GitHub Stats" in svg
     assert "Total Stars: <tspan class=\"bold\">100</tspan>" in svg
-    assert "Disk Usage: <tspan class=\"bold\">100 MB</tspan>" in svg
     print("test_stats_svg passed")
 
 def test_languages_svg_compact():
@@ -54,7 +53,7 @@ def test_languages_svg_bar():
     svg = generate_languages_svg("Test User", languages, c, True, "bar")
     try:
         assert 'fill="none"' in svg  # transparent
-        assert 'fill="#0000ff"' in svg # header color
+        assert 'fill: #0000ff' in svg # header color (in CSS)
         assert "Python" in svg
         assert "60.5%" in svg
         print("test_languages_svg_bar passed")

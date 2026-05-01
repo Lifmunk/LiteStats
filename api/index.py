@@ -3,6 +3,9 @@ from fastapi.responses import HTMLResponse
 import httpx
 import os
 from typing import Optional, List, Dict
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 
@@ -15,7 +18,6 @@ def get_query(username: str):
           user(login: $login) {
             name
             login
-            diskUsage
             contributionsCollection {
               totalCommitContributions
               restrictedContributionsCount
@@ -52,15 +54,6 @@ def get_query(username: str):
         "variables": {"login": username}
     }
 
-def format_size(kb: int) -> str:
-    if kb < 1024:
-        return f"{kb} KB"
-    mb = kb / 1024
-    if mb < 1024:
-        return f"{mb:.2f} MB"
-    gb = mb / 1024
-    return f"{gb:.2f} GB"
-
 def get_colors(theme: str, bg_color: Optional[str], text_color: Optional[str], title_color: Optional[str]):
     themes = {
         "dark": {
@@ -90,8 +83,7 @@ def generate_stats_svg(stats: dict, c: dict, transparent: bool, hide: List[str])
         ("prs", f"Total PRs: {stats['prs']}"),
         ("issues", f"Total Issues: {stats['issues']}"),
         ("contributed", f"Contributed to: {stats['contributed_to']}"),
-        ("repos", f"Total Repos: {stats['total_repos']}"),
-        ("disk", f"Disk Usage: {stats['disk_usage']}")
+        ("repos", f"Total Repos: {stats['total_repos']}")
     ]
     
     visible_rows = [r[1] for r in rows if r[0] not in hide]
@@ -209,57 +201,63 @@ async def get_stats(
     if not token:
         return Response(content="GITHUB_TOKEN not found", status_code=500)
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            GITHUB_GRAPHQL_URL,
-            json=get_query(username),
-            headers={"Authorization": f"bearer {token}"}
-        )
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                GITHUB_GRAPHQL_URL,
+                json=get_query(username),
+                headers={"Authorization": f"bearer {token}"}
+            )
+            
+            if response.status_code != 200:
+                return Response(content="Error fetching data from GitHub", status_code=500)
+            
+            data = response.json()
+    except Exception as e:
+        return Response(content=f"Request error: {str(e)}", status_code=500)
         
-        if response.status_code != 200:
-            return Response(content="Error fetching data from GitHub", status_code=500)
+    if "errors" in data:
+        return Response(content=data["errors"][0]["message"], status_code=404)
+            
+    user = data["data"]["user"]
+    if not user:
+        return Response(content="User not found", status_code=404)
+
+    c = get_colors(theme, bg_color, text_color, title_color)
+    hide_list = [h.strip() for h in hide.split(",") if h.strip()]
+    
+    if type == "languages":
+        lang_stats = {}
+        for repo in user["repositories"]["nodes"]:
+            for edge in repo["languages"]["edges"]:
+                name = edge["node"]["name"]
+                color = edge["node"]["color"]
+                size = edge["size"]
+                if name in lang_stats:
+                    lang_stats[name]["size"] += size
+                else:
+                    lang_stats[name] = {"name": name, "color": color, "size": size}
         
-        data = response.json()
-        if "errors" in data:
-            return Response(content=data["errors"][0]["message"], status_code=404)
-            
-        user = data["data"]["user"]
-        c = get_colors(theme, bg_color, text_color, title_color)
-        hide_list = [h.strip() for h in hide.split(",") if h.strip()]
+        total_size = sum(l["size"] for l in lang_stats.values())
+        languages = sorted(lang_stats.values(), key=lambda x: x["size"], reverse=True)
+        for l in languages:
+            l["percent"] = (l["size"] / total_size * 100) if total_size > 0 else 0
         
-        if type == "languages":
-            lang_stats = {}
-            for repo in user["repositories"]["nodes"]:
-                for edge in repo["languages"]["edges"]:
-                    name = edge["node"]["name"]
-                    color = edge["node"]["color"]
-                    size = edge["size"]
-                    if name in lang_stats:
-                        lang_stats[name]["size"] += size
-                    else:
-                        lang_stats[name] = {"name": name, "color": color, "size": size}
-            
-            total_size = sum(l["size"] for l in lang_stats.values())
-            languages = sorted(lang_stats.values(), key=lambda x: x["size"], reverse=True)
-            for l in languages:
-                l["percent"] = (l["size"] / total_size * 100) if total_size > 0 else 0
-            
-            svg_content = generate_languages_svg(user["name"] or user["login"], languages, c, transparent, chart)
-        else:
-            stats = {
-                "name": user["name"],
-                "login": user["login"],
-                "stars": sum(repo["stargazers"]["totalCount"] for repo in user["repositories"]["nodes"]),
-                "commits": user["contributionsCollection"]["totalCommitContributions"] + user["contributionsCollection"]["restrictedContributionsCount"],
-                "prs": user["pullRequests"]["totalCount"],
-                "issues": user["issues"]["totalCount"],
-                "contributed_to": user["repositoriesContributedTo"]["totalCount"],
-                "total_repos": user["repositories"]["totalCount"],
-                "disk_usage": format_size(user["diskUsage"])
-            }
-            svg_content = generate_stats_svg(stats, c, transparent, hide_list)
-            
-        return Response(content=svg_content, media_type="image/svg+xml")
+        svg_content = generate_languages_svg(user["name"] or user["login"], languages, c, transparent, chart)
+    else:
+        stats = {
+            "name": user["name"],
+            "login": user["login"],
+            "stars": sum(repo["stargazers"]["totalCount"] for repo in user["repositories"]["nodes"]),
+            "commits": user["contributionsCollection"]["totalCommitContributions"] + user["contributionsCollection"]["restrictedContributionsCount"],
+            "prs": user["pullRequests"]["totalCount"],
+            "issues": user["issues"]["totalCount"],
+            "contributed_to": user["repositoriesContributedTo"]["totalCount"],
+            "total_repos": user["repositories"]["totalCount"]
+        }
+        svg_content = generate_stats_svg(stats, c, transparent, hide_list)
+        
+    return Response(content=svg_content, media_type="image/svg+xml")
 
 if __name__ == "__main__":
     import uvicorn

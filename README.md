@@ -1,64 +1,164 @@
-# 📊 LiteStats: Minimal GitHub Stats for your Profile
+# LiteStats
 
-LiteStats is a modern, lightweight, and minimal tool to display your GitHub statistics on your profile README. Built with Python and FastAPI, it focuses on simplicity and speed, providing exactly what you need without any bloat.
+A minimal, lightweight tool for displaying GitHub statistics on your profile README. Built with Python and FastAPI, it generates dynamic SVG images showing your GitHub stats.
 
-Inspired by the amazing [github-readme-stats](https://github.com/anuraghazra/github-readme-stats).
+Inspired by [github-readme-stats](https://github.com/anuraghazra/github-readme-stats).
 
-## ✨ Features
+## Features
 
-- **Minimalistic Design**: Clean and modern SVG output.
-- **Fast & Light**: Built with Python and FastAPI for high performance.
-- **Theme Support**: Simple Dark and Light themes.
-- **Easy Deployment**: One-click deployment to Vercel.
-- **GraphQL Powered**: Efficiently fetches data using GitHub's GraphQL API.
+- **Minimal Design** — Clean SVG output without the bloat
+- **Fast & Light** — Python + FastAPI for high performance
+- **Theme Support** — Dark and light themes with custom colors
+- **Two Views** — Stats overview and language breakdown
+- **Easy Deployment** — One-click deploy to Vercel
+- **GraphQL Powered** — Efficient data fetching from GitHub
 
-## 🚀 Quick Start
+## Quick Start
 
-To use LiteStats on your profile, simply add the following to your `README.md`:
+Add this to your `README.md`:
 
 ```markdown
-![GitHub Stats](https://your-vercel-domain.vercel.app/?username=yourusername&theme=dark)
+![GitHub Stats](https://your-domain.vercel.app/?username=yourusername)
 ```
 
-### Parameters
+## Parameters
 
-- `username`: Your GitHub username (Required)
-- `theme`: `dark` (default) or `light`
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `username` | string | *required* | GitHub username |
+| `type` | string | `stats` | `stats` or `languages` |
+| `theme` | string | `dark` | `dark` or `light` |
+| `chart` | string | `compact` | `compact` or `bar` (for languages) |
+| `transparent` | bool | `false` | Transparent background |
+| `bg_color` | string | theme default | Custom background color (hex, no `#`) |
+| `text_color` | string | theme default | Custom text color (hex, no `#`) |
+| `title_color` | string | theme default | Custom title color (hex, no `#`) |
+| `hide` | string | `""` | Comma-separated stats to hide |
 
-## 🛠️ How to Host & Setup
+## Usage Examples
 
-### 1. Create a GitHub Personal Access Token (PAT)
+**Stats view (dark theme):**
+```
+https://your-domain.vercel.app/?username=yourusername
+```
 
-You need a token to fetch your stats from GitHub's API.
+**Stats view (light theme):**
+```
+https://your-domain.vercel.app/?username=yourusername&theme=light
+```
 
-1. Go to [GitHub Settings > Developer settings > Personal access tokens > Tokens (classic)](https://github.com/settings/tokens).
-2. Click **Generate new token**.
-3. Select the `repo` and `user` scopes (or just `public_repo` if you only care about public stats).
-4. Copy the generated token. **Keep it safe!**
+**Top languages (compact chart):**
+```
+https://your-domain.vercel.app/?username=yourusername&type=languages
+```
 
-### 2. Deploy to Vercel
+**Top languages (bar chart):**
+```
+https://your-domain.vercel.app/?username=yourusername&type=languages&chart=bar
+```
 
-1. Fork this repository.
-2. Go to [Vercel](https://vercel.com/) and create a new project.
-3. Import your forked repository.
-4. In the **Environment Variables** section, add:
-   - `GITHUB_TOKEN`: Paste your Personal Access Token here.
-5. Click **Deploy**.
+**Custom colors:**
+```
+https://your-domain.vercel.app/?username=yourusername&bg_color=0d1117&text_color=c9d1d9&title_color=58a6ff
+```
 
-Once deployed, Vercel will give you a domain. Use that domain in your README link as shown in the [Quick Start](#-quick-start) section.
+**Transparent background:**
+```
+https://your-domain.vercel.app/?username=yourusername&transparent=true
+```
 
-## 🎨 Themes
+**Hide specific stats:**
+```
+https://your-domain.vercel.app/?username=yourusername&hide=stars,issues
+```
 
-### Dark Theme (Default)
+## Themes
+
+### Dark (Default)
+- Background: `#0d1117`
+- Text: `#c9d1d9`
+- Title: `#58a6ff`
+
 `?theme=dark`
 
-### Light Theme
+### Light
+- Background: `#ffffff`
+- Text: `#24292f`
+- Title: `#0969da`
+
 `?theme=light`
 
-## 🤝 Inspiration
+## Local Development
 
-This project was inspired by [anuraghazra/github-readme-stats](https://github.com/anuraghazra/github-readme-stats). While that project is amazing and feature-rich, LiteStats aims to provide a simpler, Python-based alternative for those who want a more minimal approach.
+**Prerequisites:** Python 3.x, GitHub Personal Access Token
 
-## 📄 License
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/Lite-stats.git
+cd Lite-stats
 
-MIT License. See `LICENSE` for more details.
+# Install dependencies
+pip install -r requirements.txt
+
+# Set your GitHub token
+export GITHUB_TOKEN="your_github_token"
+
+# Run the server
+python api/index.py
+```
+
+Server starts at `http://localhost:8000`
+
+## Deploy to Vercel
+
+1. Fork this repository
+2. Go to [Vercel](https://vercel.com/) and create a new project
+3. Import your forked repository
+4. Add environment variable: `GITHUB_TOKEN` = your GitHub PAT
+5. Click **Deploy**
+
+Vercel will provide a domain — use it in your README as shown in [Quick Start](#quick-start).
+
+## Tech Stack
+
+- **Python 3.x**
+- **FastAPI** — Web framework
+- **Uvicorn** — ASGI server
+- **httpx** — Async HTTP client
+- **Vercel** — Serverless deployment
+
+## Project Structure
+
+```
+Lite-stats/
+├── api/
+│   └── index.py          # Main application & API endpoints
+├── tests/
+│   └── test_svg.py       # Unit tests
+├── templates/            # Reserved for future use
+├── requirements.txt      # Python dependencies
+├── vercel.json          # Vercel configuration
+└── LICENSE              # MIT License
+```
+
+## Stats Shown
+
+The stats view displays:
+- Total Stars
+- Total Commits
+- Pull Requests
+- Issues
+- Repositories Contributed To
+- Total Repositories
+
+The languages view shows your top programming languages with percentage breakdowns.
+
+## Running Tests
+
+```bash
+pytest tests/
+```
+
+## License
+
+MIT License — see [LICENSE](LICENSE) for details.
